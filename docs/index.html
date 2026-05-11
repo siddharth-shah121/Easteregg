@@ -41,9 +41,10 @@
 <body>
 
 <h1>Pong Challenge</h1>
-<p>First to 5 wins.</p>
+<p>First to 5 wins</p>
+<p>Controls: W/S or Arrow Keys</p>
 
-<canvas id="game" width="800" height="500"></canvas>
+<canvas id="game" width="900" height="500"></canvas>
 
 <div id="message"></div>
 
@@ -52,10 +53,10 @@
     const ctx = canvas.getContext("2d");
 
     const paddleWidth = 12;
-    const paddleHeight = 100;
+    const paddleHeight = 110;
 
     const player = {
-      x: 10,
+      x: 20,
       y: canvas.height / 2 - paddleHeight / 2,
       width: paddleWidth,
       height: paddleHeight,
@@ -63,31 +64,33 @@
     };
 
     const ai = {
-      x: canvas.width - 22,
+      x: canvas.width - 32,
       y: canvas.height / 2 - paddleHeight / 2,
       width: paddleWidth,
       height: paddleHeight,
-      speed: 4
+      speed: 4.5
     };
 
     const ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
       radius: 10,
-      speedX: 5,
-      speedY: 5
+      speed: 5,
+      velocityX: 5,
+      velocityY: 2
     };
 
     let playerScore = 0;
     let aiScore = 0;
+    let gameRunning = true;
 
     const keys = {};
 
-    document.addEventListener("keydown", (e) => {
+    document.addEventListener("keydown", e => {
       keys[e.key] = true;
     });
 
-    document.addEventListener("keyup", (e) => {
+    document.addEventListener("keyup", e => {
       keys[e.key] = false;
     });
 
@@ -109,16 +112,27 @@
       ctx.fillText(text, x, y);
     }
 
-    function resetBall() {
+    function resetBall(direction = 1) {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
 
-      ball.speedX = -ball.speedX;
-      ball.speedY = (Math.random() * 6) - 3;
+      ball.speed = 5;
+
+      ball.velocityX = 5 * direction;
+      ball.velocityY = (Math.random() * 4) - 2;
+    }
+
+    function collision(ball, paddle) {
+      return (
+        ball.x - ball.radius < paddle.x + paddle.width &&
+        ball.x + ball.radius > paddle.x &&
+        ball.y - ball.radius < paddle.y + paddle.height &&
+        ball.y + ball.radius > paddle.y
+      );
     }
 
     function update() {
-      // Player movement
+      // PLAYER MOVEMENT
       if (keys["w"] || keys["ArrowUp"]) {
         player.y -= player.speed;
       }
@@ -127,55 +141,64 @@
         player.y += player.speed;
       }
 
-      // Keep player inside screen
-      if (player.y < 0) player.y = 0;
-      if (player.y + player.height > canvas.height)
-        player.y = canvas.height - player.height;
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
 
-      // AI movement
-      const aiCenter = ai.y + ai.height / 2;
+      // AI MOVEMENT
+      let aiCenter = ai.y + ai.height / 2;
 
-      if (aiCenter < ball.y - 35) {
+      if (aiCenter < ball.y - 20) {
         ai.y += ai.speed;
-      } else if (aiCenter > ball.y + 35) {
+      } else if (aiCenter > ball.y + 20) {
         ai.y -= ai.speed;
       }
 
-      // Ball movement
-      ball.x += ball.speedX;
-      ball.y += ball.speedY;
+      // BALL MOVEMENT
+      ball.x += ball.velocityX;
+      ball.y += ball.velocityY;
 
-      // Top/bottom bounce
-      if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-        ball.speedY *= -1;
+      // WALL BOUNCE
+      if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= canvas.height) {
+        ball.velocityY *= -1;
       }
 
-      // Paddle collision
-      const paddles = [player, ai];
+      // PADDLE COLLISION
+      let currentPaddle = (ball.x < canvas.width / 2) ? player : ai;
 
-      paddles.forEach((paddle) => {
-        if (
-          ball.x - ball.radius < paddle.x + paddle.width &&
-          ball.x + ball.radius > paddle.x &&
-          ball.y - ball.radius < paddle.y + paddle.height &&
-          ball.y + ball.radius > paddle.y
-        ) {
-          ball.speedX *= -1.05;
-        }
-      });
+      if (collision(ball, currentPaddle)) {
 
-      // Scoring
+        // Where ball hit paddle
+        let collidePoint =
+          ball.y - (currentPaddle.y + currentPaddle.height / 2);
+
+        // Normalize between -1 and 1
+        collidePoint = collidePoint / (currentPaddle.height / 2);
+
+        // Max bounce angle = 45 degrees
+        let angleRad = (Math.PI / 4) * collidePoint;
+
+        // Direction
+        let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+
+        // Slight speed increase each hit
+        ball.speed += 0.25;
+
+        // New velocity
+        ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+        ball.velocityY = ball.speed * Math.sin(angleRad);
+      }
+
+      // SCORE
       if (ball.x < 0) {
         aiScore++;
-        resetBall();
+        resetBall(1);
       }
 
       if (ball.x > canvas.width) {
         playerScore++;
-        resetBall();
+        resetBall(-1);
       }
 
-      // Win condition
+      // WIN CONDITION
       if (playerScore >= 5) {
         endGame(true);
       }
@@ -188,7 +211,7 @@
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Middle line
+      // Middle dashed line
       for (let i = 0; i < canvas.height; i += 25) {
         drawRect(canvas.width / 2 - 2, i, 4, 15, "gray");
       }
@@ -199,18 +222,7 @@
       drawCircle(ball.x, ball.y, ball.radius);
 
       drawText(playerScore, canvas.width / 4, 50);
-      drawText(aiScore, canvas.width * 3/4, 50);
-    }
-
-    let gameRunning = true;
-
-    function gameLoop() {
-      if (!gameRunning) return;
-
-      update();
-      render();
-
-      requestAnimationFrame(gameLoop);
+      drawText(aiScore, canvas.width * 3 / 4, 50);
     }
 
     function endGame(playerWon) {
@@ -226,10 +238,23 @@
           </a>
         `;
       } else {
-        message.innerHTML = `<h2>AI Wins. Refresh to try again.</h2>`;
+        message.innerHTML = `
+          <h2>AI Wins</h2>
+          <p>Refresh to try again</p>
+        `;
       }
     }
 
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      update();
+      render();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    resetBall();
     gameLoop();
 </script>
 
