@@ -15,6 +15,10 @@
           text-align: center;
         }
 
+        h1 {
+          margin-top: 15px;
+        }
+
         canvas {
           display: block;
           margin: 20px auto;
@@ -23,14 +27,14 @@
         }
 
         #message {
+          margin-top: 15px;
           font-size: 24px;
-          margin-top: 10px;
         }
 
         a {
           color: #00ffcc;
-          font-size: 22px;
           text-decoration: none;
+          font-size: 24px;
         }
 
         a:hover {
@@ -55,6 +59,7 @@
     const paddleWidth = 12;
     const paddleHeight = 110;
 
+    // PLAYER
     const player = {
       x: 20,
       y: canvas.height / 2 - paddleHeight / 2,
@@ -63,14 +68,16 @@
       speed: 7
     };
 
+    // EASY AI
     const ai = {
       x: canvas.width - 32,
       y: canvas.height / 2 - paddleHeight / 2,
       width: paddleWidth,
       height: paddleHeight,
-      speed: 4.5
+      speed: 2.2
     };
 
+    // BALL
     const ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
@@ -86,32 +93,37 @@
 
     const keys = {};
 
-    document.addEventListener("keydown", e => {
+    // KEY INPUT
+    document.addEventListener("keydown", (e) => {
       keys[e.key] = true;
     });
 
-    document.addEventListener("keyup", e => {
+    document.addEventListener("keyup", (e) => {
       keys[e.key] = false;
     });
 
-    function drawRect(x, y, w, h, color="white") {
+    // DRAW RECT
+    function drawRect(x, y, w, h, color = "white") {
       ctx.fillStyle = color;
       ctx.fillRect(x, y, w, h);
     }
 
-    function drawCircle(x, y, r, color="white") {
+    // DRAW BALL
+    function drawCircle(x, y, r, color = "white") {
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
 
+    // DRAW TEXT
     function drawText(text, x, y) {
       ctx.fillStyle = "white";
       ctx.font = "32px Arial";
       ctx.fillText(text, x, y);
     }
 
+    // RESET BALL
     function resetBall(direction = 1) {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
@@ -122,6 +134,7 @@
       ball.velocityY = (Math.random() * 4) - 2;
     }
 
+    // COLLISION CHECK
     function collision(ball, paddle) {
       return (
         ball.x - ball.radius < paddle.x + paddle.width &&
@@ -131,7 +144,9 @@
       );
     }
 
+    // UPDATE GAME
     function update() {
+
       // PLAYER MOVEMENT
       if (keys["w"] || keys["ArrowUp"]) {
         player.y -= player.speed;
@@ -141,50 +156,75 @@
         player.y += player.speed;
       }
 
-      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+      // KEEP PLAYER INSIDE SCREEN
+      player.y = Math.max(
+        0,
+        Math.min(canvas.height - player.height, player.y)
+      );
 
-      // AI MOVEMENT
+      // EASY AI MOVEMENT
       let aiCenter = ai.y + ai.height / 2;
 
-      if (aiCenter < ball.y - 20) {
-        ai.y += ai.speed;
-      } else if (aiCenter > ball.y + 20) {
-        ai.y -= ai.speed;
+      // Random chance AI doesn't react
+      if (Math.random() > 0.08) {
+
+        if (aiCenter < ball.y - 35) {
+          ai.y += ai.speed;
+        }
+        else if (aiCenter > ball.y + 35) {
+          ai.y -= ai.speed;
+        }
       }
+
+      // KEEP AI INSIDE SCREEN
+      ai.y = Math.max(
+        0,
+        Math.min(canvas.height - ai.height, ai.y)
+      );
 
       // BALL MOVEMENT
       ball.x += ball.velocityX;
       ball.y += ball.velocityY;
 
       // WALL BOUNCE
-      if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= canvas.height) {
+      if (
+        ball.y - ball.radius <= 0 ||
+        ball.y + ball.radius >= canvas.height
+      ) {
         ball.velocityY *= -1;
       }
 
-      // PADDLE COLLISION
-      let currentPaddle = (ball.x < canvas.width / 2) ? player : ai;
+      // DETERMINE CURRENT PADDLE
+      let currentPaddle =
+        (ball.x < canvas.width / 2) ? player : ai;
 
+      // PADDLE COLLISION
       if (collision(ball, currentPaddle)) {
 
-        // Where ball hit paddle
+        // POSITION OF HIT
         let collidePoint =
           ball.y - (currentPaddle.y + currentPaddle.height / 2);
 
-        // Normalize between -1 and 1
-        collidePoint = collidePoint / (currentPaddle.height / 2);
+        // NORMALIZE BETWEEN -1 AND 1
+        collidePoint =
+          collidePoint / (currentPaddle.height / 2);
 
-        // Max bounce angle = 45 degrees
+        // MAX ANGLE 45 DEGREES
         let angleRad = (Math.PI / 4) * collidePoint;
 
-        // Direction
-        let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+        // DIRECTION
+        let direction =
+          (ball.x < canvas.width / 2) ? 1 : -1;
 
-        // Slight speed increase each hit
-        ball.speed += 0.25;
+        // SLIGHT SPEED INCREASE
+        ball.speed += 0.2;
 
-        // New velocity
-        ball.velocityX = direction * ball.speed * Math.cos(angleRad);
-        ball.velocityY = ball.speed * Math.sin(angleRad);
+        // REALISTIC BOUNCE
+        ball.velocityX =
+          direction * ball.speed * Math.cos(angleRad);
+
+        ball.velocityY =
+          ball.speed * Math.sin(angleRad);
       }
 
       // SCORE
@@ -198,7 +238,7 @@
         resetBall(-1);
       }
 
-      // WIN CONDITION
+      // WIN CONDITIONS
       if (playerScore >= 5) {
         endGame(true);
       }
@@ -208,36 +248,72 @@
       }
     }
 
+    // RENDER GAME
     function render() {
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Middle dashed line
+      // CENTER DASHES
       for (let i = 0; i < canvas.height; i += 25) {
-        drawRect(canvas.width / 2 - 2, i, 4, 15, "gray");
+        drawRect(
+          canvas.width / 2 - 2,
+          i,
+          4,
+          15,
+          "gray"
+        );
       }
 
-      drawRect(player.x, player.y, player.width, player.height);
-      drawRect(ai.x, ai.y, ai.width, ai.height);
+      // PADDLES
+      drawRect(
+        player.x,
+        player.y,
+        player.width,
+        player.height
+      );
 
-      drawCircle(ball.x, ball.y, ball.radius);
+      drawRect(
+        ai.x,
+        ai.y,
+        ai.width,
+        ai.height
+      );
 
+      // BALL
+      drawCircle(
+        ball.x,
+        ball.y,
+        ball.radius
+      );
+
+      // SCORES
       drawText(playerScore, canvas.width / 4, 50);
       drawText(aiScore, canvas.width * 3 / 4, 50);
     }
 
+    // END GAME
     function endGame(playerWon) {
+
       gameRunning = false;
 
-      const message = document.getElementById("message");
+      const message =
+        document.getElementById("message");
 
       if (playerWon) {
+
         message.innerHTML = `
           <h2>You Win!</h2>
-          <a href="https://discord.gg/52nR7Rrr2t" target="_blank">
-            Join the Discord
+
+          <a href="https://discord.gg/52nR7Rrr2t"
+             target="_blank">
+
+             Join the Discord
+
           </a>
         `;
+
       } else {
+
         message.innerHTML = `
           <h2>AI Wins</h2>
           <p>Refresh to try again</p>
@@ -245,7 +321,9 @@
       }
     }
 
+    // GAME LOOP
     function gameLoop() {
+
       if (!gameRunning) return;
 
       update();
@@ -254,8 +332,10 @@
       requestAnimationFrame(gameLoop);
     }
 
+    // START GAME
     resetBall();
     gameLoop();
+
 </script>
 
 </body>
