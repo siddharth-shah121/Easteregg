@@ -9,10 +9,10 @@
         body {
           margin: 0;
           background: #111;
-          overflow: hidden;
           font-family: Arial, sans-serif;
           color: white;
           text-align: center;
+          overflow: hidden;
         }
 
         h1 {
@@ -26,40 +26,62 @@
           border: 3px solid white;
         }
 
-        #message {
-          margin-top: 15px;
-          font-size: 24px;
+        /* FULL SCREEN END OVERLAY */
+        #overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: black;
+          display: none;
+          justify-content: center;
+          align-items: center;
+          flex-direction: column;
+          z-index: 999;
         }
 
-        a {
+        #overlay h2 {
+          font-size: 40px;
+          margin-bottom: 20px;
+        }
+
+        #overlay a {
           color: #00ffcc;
+          font-size: 26px;
           text-decoration: none;
-          font-size: 24px;
         }
 
-        a:hover {
+        #overlay a:hover {
           text-decoration: underline;
+        }
+
+        #overlay button {
+          margin-top: 20px;
+          padding: 10px 20px;
+          font-size: 18px;
+          cursor: pointer;
         }
     </style>
 </head>
+
 <body>
 
 <h1>Pong Challenge</h1>
 <p>First to 5 wins</p>
-<p>Controls: W/S or Arrow Keys</p>
 
 <canvas id="game" width="900" height="500"></canvas>
 
-<div id="message"></div>
+<div id="overlay"></div>
 
 <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
 
     const paddleWidth = 12;
     const paddleHeight = 110;
 
-    // PLAYER
     const player = {
       x: 20,
       y: canvas.height / 2 - paddleHeight / 2,
@@ -68,7 +90,6 @@
       speed: 7
     };
 
-    // EASY AI
     const ai = {
       x: canvas.width - 32,
       y: canvas.height / 2 - paddleHeight / 2,
@@ -77,7 +98,6 @@
       speed: 2.2
     };
 
-    // BALL
     const ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
@@ -93,141 +113,78 @@
 
     const keys = {};
 
-    // KEY INPUT
-    document.addEventListener("keydown", (e) => {
-      keys[e.key] = true;
-    });
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
 
-    document.addEventListener("keyup", (e) => {
-      keys[e.key] = false;
-    });
-
-    // DRAW RECT
-    function drawRect(x, y, w, h, color = "white") {
-      ctx.fillStyle = color;
+    function drawRect(x, y, w, h) {
+      ctx.fillStyle = "white";
       ctx.fillRect(x, y, w, h);
     }
 
-    // DRAW BALL
-    function drawCircle(x, y, r, color = "white") {
-      ctx.fillStyle = color;
+    function drawCircle(x, y, r) {
+      ctx.fillStyle = "white";
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // DRAW TEXT
     function drawText(text, x, y) {
       ctx.fillStyle = "white";
       ctx.font = "32px Arial";
       ctx.fillText(text, x, y);
     }
 
-    // RESET BALL
-    function resetBall(direction = 1) {
+    function resetBall(dir = 1) {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
-
       ball.speed = 5;
-
-      ball.velocityX = 5 * direction;
+      ball.velocityX = 5 * dir;
       ball.velocityY = (Math.random() * 4) - 2;
     }
 
-    // COLLISION CHECK
-    function collision(ball, paddle) {
+    function collision(b, p) {
       return (
-        ball.x - ball.radius < paddle.x + paddle.width &&
-        ball.x + ball.radius > paddle.x &&
-        ball.y - ball.radius < paddle.y + paddle.height &&
-        ball.y + ball.radius > paddle.y
+        b.x - b.radius < p.x + p.width &&
+        b.x + b.radius > p.x &&
+        b.y - b.radius < p.y + p.height &&
+        b.y + b.radius > p.y
       );
     }
 
-    // UPDATE GAME
     function update() {
+      if (keys["w"] || keys["ArrowUp"]) player.y -= player.speed;
+      if (keys["s"] || keys["ArrowDown"]) player.y += player.speed;
 
-      // PLAYER MOVEMENT
-      if (keys["w"] || keys["ArrowUp"]) {
-        player.y -= player.speed;
-      }
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
 
-      if (keys["s"] || keys["ArrowDown"]) {
-        player.y += player.speed;
-      }
-
-      // KEEP PLAYER INSIDE SCREEN
-      player.y = Math.max(
-        0,
-        Math.min(canvas.height - player.height, player.y)
-      );
-
-      // EASY AI MOVEMENT
       let aiCenter = ai.y + ai.height / 2;
 
-      // Random chance AI doesn't react
       if (Math.random() > 0.08) {
-
-        if (aiCenter < ball.y - 35) {
-          ai.y += ai.speed;
-        }
-        else if (aiCenter > ball.y + 35) {
-          ai.y -= ai.speed;
-        }
+        if (aiCenter < ball.y - 35) ai.y += ai.speed;
+        else if (aiCenter > ball.y + 35) ai.y -= ai.speed;
       }
 
-      // KEEP AI INSIDE SCREEN
-      ai.y = Math.max(
-        0,
-        Math.min(canvas.height - ai.height, ai.y)
-      );
+      ai.y = Math.max(0, Math.min(canvas.height - ai.height, ai.y));
 
-      // BALL MOVEMENT
       ball.x += ball.velocityX;
       ball.y += ball.velocityY;
 
-      // WALL BOUNCE
-      if (
-        ball.y - ball.radius <= 0 ||
-        ball.y + ball.radius >= canvas.height
-      ) {
-        ball.velocityY *= -1;
-      }
+      if (ball.y <= 0 || ball.y >= canvas.height) ball.velocityY *= -1;
 
-      // DETERMINE CURRENT PADDLE
-      let currentPaddle =
-        (ball.x < canvas.width / 2) ? player : ai;
+      let paddle = (ball.x < canvas.width / 2) ? player : ai;
 
-      // PADDLE COLLISION
-      if (collision(ball, currentPaddle)) {
+      if (collision(ball, paddle)) {
+        let collidePoint = (ball.y - (paddle.y + paddle.height / 2)) / (paddle.height / 2);
+        let angle = (Math.PI / 4) * collidePoint;
 
-        // POSITION OF HIT
-        let collidePoint =
-          ball.y - (currentPaddle.y + currentPaddle.height / 2);
+        let dir = (ball.x < canvas.width / 2) ? 1 : -1;
 
-        // NORMALIZE BETWEEN -1 AND 1
-        collidePoint =
-          collidePoint / (currentPaddle.height / 2);
-
-        // MAX ANGLE 45 DEGREES
-        let angleRad = (Math.PI / 4) * collidePoint;
-
-        // DIRECTION
-        let direction =
-          (ball.x < canvas.width / 2) ? 1 : -1;
-
-        // SLIGHT SPEED INCREASE
         ball.speed += 0.2;
 
-        // REALISTIC BOUNCE
-        ball.velocityX =
-          direction * ball.speed * Math.cos(angleRad);
-
-        ball.velocityY =
-          ball.speed * Math.sin(angleRad);
+        ball.velocityX = dir * ball.speed * Math.cos(angle);
+        ball.velocityY = ball.speed * Math.sin(angle);
       }
 
-      // SCORE
       if (ball.x < 0) {
         aiScore++;
         resetBall(1);
@@ -238,108 +195,57 @@
         resetBall(-1);
       }
 
-      // WIN CONDITIONS
-      if (playerScore >= 5) {
-        endGame(true);
-      }
-
-      if (aiScore >= 5) {
-        endGame(false);
-      }
+      if (playerScore >= 5) endGame(true);
+      if (aiScore >= 5) endGame(false);
     }
 
-    // RENDER GAME
     function render() {
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // CENTER DASHES
       for (let i = 0; i < canvas.height; i += 25) {
-        drawRect(
-          canvas.width / 2 - 2,
-          i,
-          4,
-          15,
-          "gray"
-        );
+        drawRect(canvas.width / 2 - 2, i, 4, 15);
       }
 
-      // PADDLES
-      drawRect(
-        player.x,
-        player.y,
-        player.width,
-        player.height
-      );
+      drawRect(player.x, player.y, player.width, player.height);
+      drawRect(ai.x, ai.y, ai.width, ai.height);
+      drawCircle(ball.x, ball.y, ball.radius);
 
-      drawRect(
-        ai.x,
-        ai.y,
-        ai.width,
-        ai.height
-      );
-
-      // BALL
-      drawCircle(
-        ball.x,
-        ball.y,
-        ball.radius
-      );
-
-      // SCORES
       drawText(playerScore, canvas.width / 4, 50);
       drawText(aiScore, canvas.width * 3 / 4, 50);
     }
 
-    // END GAME
     function endGame(playerWon) {
-
       gameRunning = false;
+      canvas.style.display = "none";
 
-      const message =
-        document.getElementById("message");
+      overlay.style.display = "flex";
 
       if (playerWon) {
-
-        message.innerHTML = `
+        overlay.innerHTML = `
           <h2>You Win!</h2>
-
-          <p>
-            Click this link to proceed:
-          </p>
-
-          <a href="https://discord.gg/MUPuwfKGt"
-             target="_blank">
-
-             https://discord.gg/MUPuwfKGt
-
+          <p>Click this link to proceed:</p>
+          <a href="https://discord.gg/MUPuwfKGt" target="_blank">
+            https://discord.gg/MUPuwfKGt
           </a>
         `;
-
       } else {
-
-        message.innerHTML = `
-          <h2>AI Wins</h2>
-          <p>Refresh to try again</p>
+        overlay.innerHTML = `
+          <h2>You Lost</h2>
+          <p>Try again to proceed</p>
+          <button onclick="location.reload()">Restart</button>
         `;
       }
     }
 
-    // GAME LOOP
-    function gameLoop() {
-
+    function loop() {
       if (!gameRunning) return;
-
       update();
       render();
-
-      requestAnimationFrame(gameLoop);
+      requestAnimationFrame(loop);
     }
 
-    // START GAME
     resetBall();
-    gameLoop();
-
+    loop();
 </script>
 
 </body>
